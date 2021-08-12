@@ -1,22 +1,22 @@
 {
-"short_name": "Lyr",
-"name": "Lyr: minimalistic lytics.",
-"icons": [
-{
-"src": "/images/icons-192.png",
-"type": "image/png",
-"sizes": "192x192"
-},
-{
-"src": "/images/icons-512.png",
-"type": "image/png",
-"sizes": "512x512"
-}
-],
-"start_url": "/?source=pwa",
-"background_color": "#3367D6",
-"display": "fullscreen",
-"scope": "/",
-"theme_color": "#3367D6",
-"description": "Minimalistic lyrics",
+  "short_name": "Lyr",
+  "name": "Lyr: minimalist lytics.",
+  "icons": [
+    {
+      "src": "/images/icons-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/images/icons-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/?source=pwa",
+  "background_color": "#3367D6",
+  "display": "fullscreen",
+  "scope": "/",
+  "theme_color": "#3367D6",
+  "description": "Minimalist lyrics"
 }
