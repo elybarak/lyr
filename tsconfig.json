@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "noEmit": true,
+        "target": "ESNext",
+        "jsx": "preserve",
+        "jsxFactory": "h",
+        "jsxFragmentFactory": "Fragment",
+    }
+}
