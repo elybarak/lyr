@@ -52,25 +52,21 @@ class HTMLXDataElement extends HTMLElement {
 
     async fetch(path?: string) {
         this.innerHTML = '';
-        try {
-            const url = new URL(this.base + (path ?? this.path));
-            const [key, value] = this.query.split('='); // HACK
-            url.searchParams.set(key, value);
-            const resp = await fetch(url.toString(), {
-                method: 'GET',
-                headers: this.headers ? JSON.parse(this.headers) : undefined,
-            });
-            const contentType = resp.headers.get('Content-Type');
-            const contentTypeArray = contentType.split(';');
-            const mimeType = contentTypeArray[0];
-            if (mimeType === 'application/json') {
-                const json = await resp.json();
-                const thing = <XThing meta={this.meta} value={json} />;
-                this.appendChild(thing);
-            } else this.innerHTML = mimeType;
-        } catch (e) {
-            this.innerHTML = JSON.stringify(e);
-        }
+        const url = new URL(this.base + (path ?? this.path));
+        const [key, value] = this.query.split('='); // HACK
+        url.searchParams.set(key, value);
+        const resp = await fetch(url.toString(), {
+            method: 'GET',
+            headers: this.headers ? JSON.parse(this.headers) : undefined,
+        });
+        const contentType = resp.headers.get('Content-Type');
+        const contentTypeArray = contentType.split(';');
+        const mimeType = contentTypeArray[0];
+        if (mimeType === 'application/json') {
+            const json = await resp.json();
+            const thing = <XThing meta={this.meta} value={json} />;
+            this.appendChild(thing);
+        } else this.innerHTML = mimeType;
     }
 }
 customElements.define('x-data', HTMLXDataElement);
@@ -110,7 +106,7 @@ function XObject(this: { label?: string; meta: MetaObject; value: unknown }) {
         <div className="container p-3">
             {this.label && <h6 innerHTML={this.label} />}
             <div className="d-flex flex-wrap gap-3">
-                {Object.entries(this.value).map(([label, meta]) => (
+                {Object.entries(this.meta).map(([label, meta]) => (
                     <XThing {...{ label, meta }} value={this.value[label]} />
                 ))}
             </div>
@@ -140,7 +136,7 @@ function XThing(this: {
     _id?: string;
 }) {
     this._id = Math.random().toString(36);
-    const meta = metaFromDynamicJS(this.value);
+    const meta = this.meta; //metaFromDynamicJS(this.value);
     return typeof meta === 'object' && '$array' in meta ? (
         <XArray {...this} />
     ) : typeof meta === 'object' ? (
