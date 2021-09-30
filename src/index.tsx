@@ -2,6 +2,28 @@ import { _ } from './utils';
 
 import { h } from './jsx';
 
+const bla = [
+    {
+        source: 'response',
+        meta: [
+            {
+                source: 'hits',
+                meta: {
+                    $array: [
+                        {
+                            source: 'result',
+                            meta: [
+                                { source: 'header_image_url', meta: 'image' },
+                                { source: 'api_path', meta: 'bla' },
+                            ],
+                        },
+                    ],
+                },
+            },
+        ],
+    },
+];
+
 class HTMLXDataElement extends HTMLElement {
     get base() {
         return this.getAttribute('base');
@@ -19,13 +41,73 @@ class HTMLXDataElement extends HTMLElement {
         return JSON.parse(this.getAttribute('meta'));
     }
 
+    #result: HTMLElement;
+
+    response: unknown;
+
     constructor() {
         super();
+
+        this.#result = (
+            <div style="display: block; transition: opacity .4s ease"></div>
+        );
     }
+
+    onmeta: (meta: 'dynamic' | 'bla') => unknown = () => undefined;
 
     connectedCallback() {
         this.addEventListener('click', this.handleClick.bind(this));
         window.addEventListener('hashchange', this.handleHashChange.bind(this));
+        this.append(
+            <form
+                submit={(event: Event) => {
+                    event.preventDefault();
+                    if (event.target instanceof HTMLFormElement) {
+                        console.log(new FormData(event.target).entries());
+                    }
+                }}>
+                <XThing value={bla} meta={metaFromDynamicJS(bla)} />
+                <button type="submit" className="btn btn-primary">
+                    Submit
+                </button>
+            </form>,
+            <hr />,
+            <div className="container p-3">
+                <div className="form-check">
+                    <input
+                        name="meta-radio"
+                        value="defined"
+                        className="form-check-input"
+                        type="radio"
+                        checked
+                        id="defined-meta-radio"
+                        onchange={() => this.onmeta('bla')}
+                    />
+                    <label
+                        className="form-check-label"
+                        htmlFor="defined-meta-radio">
+                        Defined Meta
+                    </label>
+                </div>
+                <div className="form-check">
+                    <input
+                        name="meta-radio"
+                        value="dynamic"
+                        className="form-check-input"
+                        type="radio"
+                        id="dynamic-meta-radio"
+                        onchange={() => this.onmeta('dynamic')}
+                    />
+                    <label
+                        className="form-check-label"
+                        htmlFor="dynamic-meta-radio">
+                        Dynamic Meta
+                    </label>
+                </div>
+            </div>,
+            <hr />,
+            this.#result
+        );
         this.fetch();
     }
 
@@ -51,7 +133,8 @@ class HTMLXDataElement extends HTMLElement {
     }
 
     async fetch(path?: string) {
-        this.innerHTML = '';
+        this.#result.animate({ opacity: ['1', '0'] }, 400);
+        this.#result.innerHTML = '';
         const url = new URL(this.base + (path ?? this.path));
         const [key, value] = this.query.split('='); // HACK
         url.searchParams.set(key, value);
@@ -64,14 +147,29 @@ class HTMLXDataElement extends HTMLElement {
         const mimeType = contentTypeArray[0];
         if (mimeType === 'application/json') {
             const json = await resp.json();
-            const thing = <XThing meta={this.meta} value={json} />;
-            this.appendChild(thing);
-        } else this.innerHTML = mimeType;
+            this.onmeta = m => {
+                this.#result.animate({ opacity: ['1', '0'] }, 400);
+                this.#result.innerHTML = '';
+                const meta = m === 'bla' ? bla : metaFromDynamicJS(json);
+                const thing = <XThing meta={meta} value={json} />;
+                this.#result.appendChild(thing);
+                this.#result.animate({ opacity: ['0', '1'] }, 400);
+                // this.#result.style.opacity = '1';
+            };
+            this.onmeta('bla');
+        } else {
+            this.innerHTML = mimeType;
+            this.#result.style.opacity = '1';
+        }
     }
 }
 customElements.define('x-data', HTMLXDataElement);
 
-type MetaObject = { [key: string]: Meta };
+type MetaSource = {
+    source: string;
+    meta: Meta;
+};
+type MetaObject = MetaSource[];
 type MetaArray = { $array: Meta };
 type Meta =
     | 'unknown'
@@ -84,15 +182,14 @@ type Meta =
 
 function metaFromDynamicJS(value: unknown): Meta {
     if (Array.isArray(value)) {
-        // TODO: non-homogenous arrays}
         if (value.length < 1) return 'unknown';
         else return { $array: metaFromDynamicJS(value[0]) };
     } else if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, value]) => [
-                key,
-                metaFromDynamicJS(value),
-            ])
+        return Object.entries(value).map(
+            ([source, value]): MetaSource => ({
+                source,
+                meta: metaFromDynamicJS(value),
+            })
         );
     } else if (typeof value === 'string') {
         return 'string';
@@ -101,87 +198,137 @@ function metaFromDynamicJS(value: unknown): Meta {
     } else return 'unknown';
 }
 
-function XObject(this: { label?: string; meta: MetaObject; value: unknown }) {
+type MetaParams<M extends Meta = Meta> = {
+    label?: string;
+    meta: M;
+    value: unknown;
+    prefix?: string;
+};
+
+function XObject(params: MetaParams<MetaObject>) {
     return (
-        <div className="container p-3">
-            {this.label && <h6 innerHTML={this.label} />}
+        <div className="p-3">
+            {params.label && <h6 innerHTML={params.label} />}
             <div className="d-flex flex-wrap gap-3">
-                {Object.entries(this.meta).map(([label, meta]) => (
-                    <XThing {...{ label, meta }} value={this.value[label]} />
+                {params.meta.map(ms => (
+                    <XThing
+                        label={ms.source}
+                        meta={ms.meta}
+                        value={params.value?.[ms.source]}
+                        prefix={
+                            (params.prefix ? params.prefix + '.' : '') +
+                            ms.source
+                        }
+                    />
                 ))}
             </div>
         </div>
     );
 }
 
-function XArray(this: { label?: string; meta: MetaArray; value: unknown[] }) {
+function XArray(params: MetaParams<MetaArray>) {
+    if (!Array.isArray(params.value)) throw JSON.stringify(params.value);
+    let _1: HTMLElement;
+
+    const child = (item: unknown) => (
+        <li className="list-group-item">
+            <XThing
+                prefix={params.prefix}
+                meta={params.meta.$array}
+                value={item}
+            />
+        </li>
+    );
+
     return (
-        <div className="container p-3">
-            {this.label && <h6 innerHTML={this.label} />}
-            <ol className="list-group list-group-ordered">
-                {this.value.map(item => (
-                    <li className="list-group-item">
-                        <XThing meta={this.meta.$array} value={item} />
-                    </li>
-                ))}
-            </ol>
+        <div className="p-3">
+            <h6>
+                {params.label && <span innerHTML={params.label} />}
+                <i
+                    className="bi-plus"
+                    onclick={() => _1.appendChild(child(null))}
+                />
+            </h6>
+            {
+                (_1 = (
+                    <ol className="list-group list-group-ordered">
+                        {params.value.map(child)}
+                    </ol>
+                ))
+            }
         </div>
     );
 }
 
-function XThing(this: {
-    label?: string;
-    meta: Meta;
-    value: unknown;
-    _id?: string;
-}) {
-    this._id = Math.random().toString(36);
-    const meta = this.meta; //metaFromDynamicJS(this.value);
+customElements.define(
+    'x-thing',
+    class extends HTMLElement {
+        constructor() {
+            super();
+        }
+        connectedCallback() {
+            const value = JSON.parse(this.getAttribute('value'));
+            this.appendChild(
+                <XThing meta={metaFromDynamicJS(value)} value={value} />
+            );
+        }
+    }
+);
+
+function XThing(params: MetaParams) {
+    const meta = params.meta; //metaFromDynamicJS(this.value);
     return typeof meta === 'object' && '$array' in meta ? (
-        <XArray {...this} />
-    ) : typeof meta === 'object' ? (
-        <XObject {...this} />
+        <XArray
+            {...params}
+            value={params.value as unknown[]}
+            meta={meta as MetaArray}
+        />
+    ) : Array.isArray(meta) ? (
+        <XObject {...params} meta={meta as MetaObject} />
     ) : meta === 'bla' ? (
-        <a href={'#' + this.value} className="btn btn-outline-primary">
+        <a href={'#' + params.value} className="btn btn-outline-primary">
             <i className="bi-link-45deg" />
-            <span innerHTML={this.label} />
+            <span innerHTML={params.label} />
         </a>
     ) : meta === 'image' ? (
         <figure className="figure">
             <img
-                src={this.value as string}
-                className="figure-img img-thumbnail"
+                src={params.value as string}
+                className="figure-img"
+                style="width: 10em; height: 10em"
             />
-            <figcaption className="figure-caption" innerText={this.label} />
+            <figcaption className="figure-caption" innerText={params.label} />
         </figure>
     ) : typeof meta === 'string' ? (
         <div className="d-inline-block form-floating">
             <input
-                id={this._id}
+                id={params.prefix}
+                name={params.prefix}
                 className="form-control"
-                value={this.value as string}
+                value={(params.value as string) || ''}
             />
-            {this.label && (
+            {params.label && (
                 <label
                     className="form-label"
-                    htmlFor={this._id}
-                    innerHTML={this.label}
+                    htmlFor={params.prefix}
+                    innerHTML={params.label}
                 />
             )}
         </div>
     ) : typeof meta === 'number' ? (
         <div className="d-inline-block form-floating">
             <input
-                id={this._id}
+                id={params.prefix}
+                name={params.prefix}
                 type="number"
                 className="form-control"
-                value={(this.value as number).toString()}
+                value={((params.value as number) || 0).toString()}
             />
-            {this.label && (
+            {params.label && (
                 <label
                     className="form-label"
-                    htmlFor={this._id}
-                    innerHTML={this.label}
+                    htmlFor={params.prefix}
+                    innerHTML={params.label}
                 />
             )}
         </div>

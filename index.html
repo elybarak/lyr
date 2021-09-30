@@ -21,25 +21,10 @@
     <body>
         <x-data
             base="https://api.genius.com"
-            path="/search?q=symphon'y"
+            path="/search?q=symphony"
             query="access_token=AV67l_fnu9Di0EUAJLo94cBu3SBrNwh-RF50f4mfcyUaXW_uiXc6qqz4AWVY-zvH"
-            meta='{ 
-        "response": {
-          "hits": { 
-            "result": { 
-              "header_image_url": "image",
-              "api_path": "bla" 
-            } 
-          },
-          "song": {
-            "description_annotation": {
-              "annotations": {
-                "api_path": "bla"
-              }
-            }
-          }
-        } 
-      }' />
+            ><x-data:meta refid="" />
+        </x-data>
         <!-- bootstrap js -->
         <script
             src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"

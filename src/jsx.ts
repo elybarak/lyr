@@ -6,10 +6,15 @@ export namespace h {
             children?: Child | Child[];
         }
 
+        // HACK
+        export interface OverrideElement extends ElementChildrenAttribute {
+            style?: string;
+        }
+
         export type JSXElement<T extends HTMLElement> = Partial<
-            Omit<T, keyof ElementChildrenAttribute>
+            Omit<T, keyof OverrideElement>
         > &
-            ElementChildrenAttribute;
+            OverrideElement;
 
         export type IntrinsicElements = {
             [P in keyof HTMLElementTagNameMap]: JSXElement<
@@ -51,7 +56,7 @@ export function h<
         const [tag, props, ...children] = params;
 
         const propsWithChildren = { ...props, children: children.flat() };
-        const res = tag.apply(propsWithChildren, propsWithChildren);
+        const res = tag(propsWithChildren);
         return res;
     } else {
         const [tag, props, ...children] = params;
@@ -59,7 +64,9 @@ export function h<
         const element = document.createElement(tag);
         Object.assign(element, props);
         if (children) {
-            element.append(...children.flat());
+            element.append(
+                ...children.flat().filter(x => x !== null && x !== undefined)
+            );
         }
         return element;
     }
